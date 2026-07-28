@@ -1,0 +1,8 @@
+.venv/
+*.pptx
+*.pptx:Zone.Identifier
+*:Zone.Identifier
+__pycache__/
+*.pyc
+figs/
+TCP Lab/

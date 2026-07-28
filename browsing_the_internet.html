@@ -1,0 +1,751 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Browsing the Internet — ACN Simulator</title>
+<style>
+  :root{
+    --navy:#0b3d91; --red:#a83232; --green:#1a6e2e; --amber:#b8860b;
+    --bg:#eef1f8; --card:#fff; --ink:#1a2233; --muted:#5a6577;
+    --dhcp:#0d7d7d; --arp:#c2410c; --dns:#7b2d8e; --tcp:#0b6ea8; --http:#1a6e2e; --data:#b8860b;
+    --appL:#1a6e2e; --transL:#0b6ea8; --netL:#7b2d8e; --linkL:#b8860b;
+    --ipcol:#1a6e2e; --maccol:#b8860b; --ttlcol:#0b6ea8;
+  }
+  *{box-sizing:border-box;}
+  body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;background:var(--bg);color:var(--ink);line-height:1.45;}
+  header{background:var(--navy);color:#fff;padding:14px 22px;}
+  header h1{margin:0;font-size:19px;}
+  header p{margin:4px 0 0;font-size:12.5px;opacity:.92;}
+  .wrap{max-width:1360px;margin:0 auto;padding:14px;}
+  .grid{display:grid;grid-template-columns:236px 1fr;gap:13px;}
+  @media(max-width:1050px){.grid{grid-template-columns:1fr;}}
+  .card{background:var(--card);border:1px solid #d6ddec;border-radius:12px;padding:13px;box-shadow:0 1px 3px rgba(10,30,80,.06);}
+  .card h2{margin:0 0 9px;font-size:13.5px;color:var(--navy);border-bottom:2px solid #eef1f8;padding-bottom:6px;display:flex;justify-content:space-between;align-items:center;gap:8px;}
+  label.ctrl{display:block;margin:9px 0 3px;font-size:11.5px;font-weight:600;color:var(--muted);}
+  .val{color:var(--navy);font-weight:700;font-variant-numeric:tabular-nums;}
+  input[type=range]{width:100%;accent-color:var(--navy);}
+  select,input[type=number]{width:100%;padding:6px 8px;border:1px solid #cfd7e6;border-radius:7px;font-size:12.5px;background:#fff;color:var(--ink);}
+  .row2{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
+  .btns{display:flex;gap:6px;margin-top:10px;flex-wrap:wrap;}
+  button{border:0;border-radius:8px;padding:7px 12px;font-size:12.5px;font-weight:600;cursor:pointer;transition:filter .15s;}
+  button:hover{filter:brightness(1.08);} button:disabled{opacity:.4;cursor:not-allowed;}
+  .primary{background:var(--navy);color:#fff;} .ghost{background:#e5eaf5;color:var(--navy);}
+  .preset{background:#fff;border:1px solid #cfd7e6;color:var(--muted);font-weight:500;padding:6px 9px;font-size:11px;}
+
+  /* tabs */
+  .tabbar{display:flex;gap:6px;margin-bottom:12px;}
+  .tabbar button{background:#dde5f2;color:var(--navy);border-radius:10px 10px 0 0;padding:9px 16px;font-size:13.5px;}
+  .tabbar button.on{background:var(--navy);color:#fff;}
+  .tabpanel{display:none;} .tabpanel.on{display:block;}
+
+  /* ===== Tab 1: steps & layers ===== */
+  .t1grid{display:grid;grid-template-columns:300px 1fr;gap:13px;}
+  @media(max-width:820px){.t1grid{grid-template-columns:1fr;}}
+  .steplog{max-height:430px;overflow-y:auto;margin:0;padding:0;list-style:none;}
+  .steplog li{border:1px solid #e3e8f2;border-left:4px solid #ccc;border-radius:8px;padding:7px 9px;margin-bottom:6px;cursor:pointer;font-size:12px;transition:background .12s;}
+  .steplog li:hover{background:#f6f8fd;}
+  .steplog li.active{background:#eef4ff;border-color:var(--navy);box-shadow:0 0 0 1px var(--navy) inset;}
+  .steplog li.done{opacity:.7;}
+  .steplog .stg{font-size:9px;font-weight:700;text-transform:uppercase;padding:1px 6px;border-radius:20px;color:#fff;margin-right:6px;}
+  .steplog b{color:var(--navy);} .steplog .tm{float:right;color:var(--muted);font-size:10.5px;font-weight:600;font-variant-numeric:tabular-nums;}
+  .explain{font-size:13px;background:#f7faff;border:1px solid #dde6f5;border-radius:9px;padding:10px 12px;margin-bottom:10px;}
+  .explain .who{font-weight:700;color:var(--navy);} .explain .why{color:var(--muted);font-size:12px;margin-top:3px;}
+  .stack{display:flex;flex-direction:column;gap:5px;}
+  .layer{border-radius:8px;padding:7px 10px;font-size:11.5px;color:#fff;box-shadow:0 1px 2px rgba(0,0,0,.12);}
+  .layer .lname{font-weight:700;font-size:10px;text-transform:uppercase;letter-spacing:.04em;opacity:.95;}
+  .layer .lfields{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:10.8px;margin-top:2px;word-break:break-word;}
+  .layer.app{background:var(--appL);} .layer.trans{background:var(--transL);} .layer.net{background:var(--netL);} .layer.link{background:var(--linkL);}
+  .layer.dim{opacity:.26;filter:grayscale(.3);}
+  .encaphdr{font-size:11px;color:var(--muted);margin:2px 0 6px;}
+  .pdu{display:inline-block;font-size:10px;font-weight:700;background:#eef1f8;color:var(--navy);border-radius:20px;padding:1px 8px;margin-left:6px;}
+  .metric{display:flex;justify-content:space-between;font-size:12px;padding:2px 0;border-bottom:1px dashed #e6ebf5;}
+  .metric b{color:var(--navy);} .mtotal{font-weight:800;color:var(--navy);border-top:2px solid var(--navy);padding-top:4px;margin-top:3px;}
+  .layernote{font-size:11px;color:var(--muted);margin-top:8px;}
+  .progress{height:5px;background:#e3e8f2;border-radius:20px;overflow:hidden;margin-top:8px;} .progress i{display:block;height:100%;background:var(--navy);width:0;transition:width .2s;}
+
+  /* ===== Tab 2: hop-by-hop ===== */
+  .t2grid{display:grid;grid-template-columns:1fr 350px;gap:13px;}
+  @media(max-width:1050px){.t2grid{grid-template-columns:1fr;}}
+  .hstrip{display:grid;grid-template-columns:1fr 1fr auto;gap:8px;margin-bottom:10px;}
+  .hbox{border-radius:9px;padding:7px 10px;font-size:11px;color:#fff;font-family:ui-monospace,Menlo,Consolas,monospace;}
+  .hbox .k{font-size:9.5px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;opacity:.9;font-family:inherit;}
+  .hbox.ip{background:var(--ipcol);} .hbox.mac{background:var(--maccol);} .hbox.ttl{background:var(--ttlcol);text-align:center;min-width:78px;}
+  .hbox.ttl .big{font-size:20px;font-weight:800;} .pin{font-size:9.5px;color:#fff;opacity:.85;margin-top:2px;}
+  .chg{animation:flash 1s ease;} @keyframes flash{0%{background:#fff;color:#111;}100%{}}
+  .stage{position:relative;height:250px;border:1px solid #d6ddec;border-radius:10px;background:linear-gradient(180deg,#fbfcff,#eef3fb);overflow:hidden;}
+  svg{position:absolute;inset:0;width:100%;height:100%;}
+  .node{position:absolute;transform:translate(-50%,-50%);text-align:center;width:104px;}
+  .node .ic{font-size:24px;line-height:1;display:block;filter:drop-shadow(0 1px 1px rgba(0,0,0,.15));}
+  .node .nm{font-size:10.5px;font-weight:700;color:var(--navy);margin-top:1px;line-height:1.15;}
+  .node .sub{font-size:9px;color:var(--muted);}
+  .node .kind{font-size:8.5px;font-weight:700;text-transform:uppercase;border-radius:20px;padding:0 6px;display:inline-block;margin-top:2px;color:#fff;}
+  .node.host .kind{background:#334155;} .node.router .kind{background:#7b2d8e;} .node.switch .kind{background:#0d7d7d;}
+  .node.here .ic{transform:scale(1.28);}
+  .node.here .ring{position:absolute;left:50%;top:14px;width:44px;height:44px;transform:translate(-50%,-50%);border-radius:50%;border:3px solid var(--navy);animation:pulse 1.1s infinite;}
+  @keyframes pulse{0%{box-shadow:0 0 0 0 rgba(11,61,145,.45);}100%{box-shadow:0 0 0 12px rgba(11,61,145,0);}}
+  .pkt{position:absolute;transform:translate(-50%,-50%);font-size:10.5px;font-weight:700;color:#fff;padding:3px 9px;border-radius:20px;white-space:nowrap;box-shadow:0 2px 6px rgba(0,0,0,.28);z-index:5;}
+  .clock{font-size:12px;font-weight:700;color:var(--navy);background:#eef1f8;border:1px solid #dde3ee;border-radius:8px;padding:2px 8px;font-variant-numeric:tabular-nums;}
+  .hopctrls{display:flex;gap:6px;align-items:center;margin-top:10px;flex-wrap:wrap;}
+  .hopctrls .lbl{font-size:11.5px;color:var(--muted);font-weight:600;margin-left:auto;}
+  .banner{font-size:11.5px;color:#5a3d00;background:#fff5da;border:1px solid #e6cf85;border-radius:8px;padding:6px 9px;margin-top:8px;display:none;}
+  .banner.on{display:block;}
+  .hoplog{max-height:170px;overflow-y:auto;margin:8px 0 0;padding:0;list-style:none;font-size:11.5px;}
+  .hoplog li{border:1px solid #e3e8f2;border-left:4px solid #ccc;border-radius:7px;padding:6px 8px;margin-bottom:5px;cursor:pointer;}
+  .hoplog li.cur{background:#eef4ff;border-color:var(--navy);box-shadow:0 0 0 1px var(--navy) inset;}
+  .hoplog .h{font-weight:700;color:var(--navy);} .hoplog .mac{font-family:ui-monospace,Menlo,Consolas,monospace;color:var(--maccol);font-size:10.3px;}
+  .hoplog .act{color:var(--muted);} .hoplog .ttl{float:right;font-weight:700;color:var(--ttlcol);font-variant-numeric:tabular-nums;}
+  .router-detail .title{font-weight:700;color:var(--navy);font-size:13.5px;}
+  .router-detail .role{font-size:11px;color:#fff;border-radius:20px;padding:1px 8px;display:inline-block;margin:3px 0;}
+  .steps4{list-style:none;margin:8px 0 0;padding:0;}
+  .steps4 li{display:flex;gap:8px;align-items:flex-start;font-size:11.7px;padding:4px 0;border-bottom:1px dashed #e6ebf5;}
+  .steps4 .n{flex:0 0 20px;height:20px;border-radius:50%;background:var(--navy);color:#fff;font-size:10px;font-weight:700;display:flex;align-items:center;justify-content:center;}
+  .steps4 .lyr{font-size:9px;font-weight:700;text-transform:uppercase;color:#fff;border-radius:20px;padding:0 6px;margin-left:auto;align-self:center;}
+  .lyr.link{background:var(--amber);} .lyr.net{background:var(--dns);} .lyr.trans{background:var(--tcp);} .lyr.app{background:var(--green);}
+  .rtable{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:10.6px;background:#0f1b33;color:#a9d5ff;border-radius:8px;padding:8px 10px;margin-top:8px;white-space:pre-wrap;}
+  .rtable .hit{color:#7CFC98;font-weight:700;}
+  .legend{display:flex;gap:11px;flex-wrap:wrap;margin-top:8px;font-size:11px;} .legend span{display:flex;align-items:center;gap:5px;color:var(--muted);}
+  .tag{width:10px;height:10px;border-radius:3px;display:inline-block;}
+  .msgrow{margin-bottom:10px;}
+  .note{font-size:11px;color:var(--muted);margin-top:8px;}
+
+  /* ===== Tab 3: RTT & timing ===== */
+  .t3grid{display:grid;grid-template-columns:1fr 330px;gap:13px;}
+  @media(max-width:1050px){.t3grid{grid-template-columns:1fr;}}
+  .rttwrap{position:relative;width:100%;height:560px;border:1px solid #d6ddec;border-radius:10px;background:linear-gradient(180deg,#fbfcff,#f2f5fb);overflow:hidden;}
+  #rttsvg{position:absolute;inset:0;width:100%;height:100%;}
+  .formulabox{background:#fff8e5;border:1px solid #e6cf85;border-radius:8px;padding:9px 11px;font-family:ui-monospace,Menlo,Consolas,monospace;font-size:11.3px;color:#5a3d00;white-space:pre-wrap;}
+  .rttcount{margin-top:8px;font-size:12px;color:var(--navy);font-weight:700;background:#eef4ff;border:1px solid #cdddf7;border-radius:8px;padding:7px 9px;text-align:center;}
+  .rttmetric{display:flex;justify-content:space-between;align-items:center;font-size:12px;padding:4px 0;border-bottom:1px dashed #e6ebf5;}
+  .rttmetric .lft{display:flex;align-items:center;gap:6px;} .rttmetric b{color:var(--navy);font-variant-numeric:tabular-nums;}
+  .rttmetric .rtts{font-size:10px;color:#fff;border-radius:20px;padding:1px 7px;font-weight:700;}
+</style>
+</head>
+<body>
+<header>
+  <h1>🌐 Browsing the Internet — how a web request really travels</h1>
+  <p>Three views of one page load. <b>Tab 1</b>: protocol steps and layer encapsulation. <b>Tab 2</b>: the packet's hop-by-hop journey across every router. <b>Tab 3</b>: the RTT time-sequence (how round-trips add up to total load time). Companion to the ACN Final Study Note (Ch. 1–6).</p>
+</header>
+
+<div class="wrap">
+  <div class="grid">
+
+    <!-- LEFT: parameters -->
+    <div class="card">
+      <h2>⚙️ Parameters</h2>
+      <label class="ctrl">Access link rate R: <span class="val" id="rateV"></span></label>
+      <input type="range" id="rate" min="0.5" max="1000" step="0.5" value="50">
+      <label class="ctrl">Distance to server: <span class="val" id="distV"></span></label>
+      <input type="range" id="dist" min="10" max="20000" step="10" value="3000">
+      <label class="ctrl">Per-router processing: <span class="val" id="procV"></span></label>
+      <input type="range" id="proc" min="0" max="20" step="0.5" value="1">
+      <div class="row2" style="margin-top:4px;">
+        <div><label class="ctrl">Page size (KB)</label><input type="number" id="obj" min="1" max="5000" value="100"></div>
+        <div><label class="ctrl">HTTP mode</label><select id="mode"><option value="persist" selected>Persistent</option><option value="nonpersist">Non-persistent</option></select></div>
+      </div>
+      <div class="row2" style="margin-top:4px;">
+        <div><label class="ctrl">DHCP first?</label><select id="dhcp"><option value="yes" selected>Yes</option><option value="no">No</option></select></div>
+        <div><label class="ctrl">ARP first?</label><select id="arp"><option value="no" selected>Yes (need MAC)</option><option value="yes">No (cached)</option></select></div>
+      </div>
+      <label class="ctrl">DNS</label>
+      <select id="dns"><option value="miss" selected>Cache miss</option><option value="hit">Cached</option></select>
+      <label class="ctrl" style="margin-top:10px;">Animation speed: <span class="val" id="spV">1×</span></label>
+      <input type="range" id="speed" min="0.25" max="4" step="0.25" value="1">
+      <label class="ctrl" style="margin-top:8px;">Presets</label>
+      <div class="btns" style="margin-top:2px;">
+        <button class="preset" data-p="fresh">🆕 Fresh laptop</button>
+        <button class="preset" data-p="fiber">🏙️ Home fiber</button>
+        <button class="preset" data-p="sat">🛰️ Satellite</button>
+      </div>
+      <div class="note">Tabs share these parameters and the same page-load story.</div>
+    </div>
+
+    <!-- RIGHT: tabbed area -->
+    <div>
+      <div class="tabbar">
+        <button id="tabBtn1" class="on">🧅 Steps &amp; layers</button>
+        <button id="tabBtn2">🛰️ Hop-by-hop journey</button>
+        <button id="tabBtn3">⏱️ RTT &amp; timing</button>
+      </div>
+
+      <!-- ============ TAB 1 ============ -->
+      <div class="tabpanel on" id="panel1">
+        <div class="t1grid">
+          <div class="card">
+            <h2><span>📋 Protocol steps</span><span class="val" id="stepCount"></span></h2>
+            <ul class="steplog" id="steplog"></ul>
+            <div class="hopctrls">
+              <button class="primary" id="s_play">▶ Play</button>
+              <button class="ghost" id="s_prev">⟵</button>
+              <button class="ghost" id="s_next">⟶</button>
+            </div>
+            <div class="progress"><i id="s_prog"></i></div>
+          </div>
+          <div>
+            <div class="card" style="margin-bottom:13px;">
+              <h2><span>🔎 What happens in this step</span></h2>
+              <div class="explain" id="explain"><div class="who">Press ▶ Play or ⟶ to begin.</div><div class="why">Each step is narrated with the layers it touches.</div></div>
+              <div class="encaphdr" id="encaphdr">Protocol stack (encapsulation):</div>
+              <div class="stack" id="stack"></div>
+              <div class="layernote" id="layernote"></div>
+            </div>
+            <div class="card">
+              <h2><span>🧮 Running delay total</span></h2>
+              <div id="metrics"></div>
+              <div class="metric mtotal"><span>Total so far</span><b id="s_total">0 ms</b></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ============ TAB 2 ============ -->
+      <div class="tabpanel" id="panel2">
+        <div class="t2grid">
+          <div>
+            <div class="card" style="margin-bottom:13px;">
+              <h2><span>🛰️ Internet path — <span id="tripName" class="val">…</span></span><span class="clock" id="clock">t = 0.0 ms</span></h2>
+              <div class="hstrip">
+                <div class="hbox mac"><div class="k">Ethernet / MAC (rewritten every hop)</div><div id="macLine">src … → dst …</div><div class="pin">changes at each router</div></div>
+                <div class="hbox ip"><div class="k">IP header (constant end-to-end)</div><div id="ipLine">src … → dst …</div><div class="pin">never changes hop to hop</div></div>
+                <div class="hbox ttl"><div class="k">TTL</div><div class="big" id="ttlBig">—</div><div class="pin" id="ttlPin">hop limit</div></div>
+              </div>
+              <div class="stage" id="stage"><svg id="svg"></svg></div>
+              <div class="hopctrls">
+                <button class="primary" id="h_play">▶ Watch hops</button>
+                <button class="ghost" id="h_prev">◀ hop</button>
+                <button class="ghost" id="h_next">hop ▶</button>
+                <button class="ghost" id="h_reset">↺</button>
+                <span class="lbl" id="hopLbl">hop 0 / 0</span>
+              </div>
+              <div class="banner" id="localBanner"></div>
+              <div class="legend">
+                <span><span class="tag" style="background:var(--maccol)"></span>MAC (link)</span>
+                <span><span class="tag" style="background:var(--ipcol)"></span>IP (network)</span>
+                <span><span class="tag" style="background:var(--ttlcol)"></span>TTL</span>
+                <span><span class="tag" style="background:#7b2d8e"></span>router (L3)</span>
+                <span><span class="tag" style="background:#0d7d7d"></span>switch (L2)</span>
+              </div>
+            </div>
+            <div class="card">
+              <h2><span>🧭 Hop-by-hop log</span></h2>
+              <ul class="hoplog" id="hoplog"></ul>
+            </div>
+          </div>
+          <div>
+            <div class="card" style="margin-bottom:13px;">
+              <h2><span>✉️ Messages — click one to trace it</span></h2>
+              <ul class="steplog" id="msglist" style="max-height:200px;"></ul>
+              <div class="note">⭐ messages cross the full Internet path. DHCP/ARP stay on the local link.</div>
+            </div>
+            <div class="card">
+              <h2><span>🔎 What this hop does</span></h2>
+              <div class="router-detail" id="detail"><div class="title">Pick a ⭐ message and press ▶ Watch hops</div></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ============ TAB 3 ============ -->
+      <div class="tabpanel" id="panel3">
+        <div class="t3grid">
+          <div class="card">
+            <h2><span>⏱️ Time-sequence ladder — page load</span><span class="val" id="rttHeadRtt"></span></h2>
+            <div class="rttwrap"><svg id="rttsvg"></svg></div>
+            <div class="legend" style="margin-top:6px;">
+              <span><span class="tag" style="background:var(--dns)"></span>DNS</span>
+              <span><span class="tag" style="background:var(--tcp)"></span>TCP handshake</span>
+              <span><span class="tag" style="background:var(--http)"></span>HTTP request</span>
+              <span><span class="tag" style="background:var(--data)"></span>HTTP response</span>
+            </div>
+            <div class="note">Time flows <b>downward</b>. Each diagonal is one message; its slope is the one-way propagation delay. A message down and its reply back = <b>one RTT</b>. Brackets on the right count the round trips.</div>
+          </div>
+          <div>
+            <div class="card" style="margin-bottom:13px;">
+              <h2><span>🧮 RTT budget</span></h2>
+              <div id="rttBudget"></div>
+              <div class="metric mtotal"><span>Total page-load time</span><b id="rttTotal">—</b></div>
+              <div class="rttcount" id="rttCount"></div>
+            </div>
+            <div class="card">
+              <h2><span>📐 The RTT formula</span></h2>
+              <div class="formulabox" id="rttFormula"></div>
+              <div class="note" id="rttInsight"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<script>
+const S=2e8, $=id=>document.getElementById(id);
+const getCSS=v=>getComputedStyle(document.documentElement).getPropertyValue(v).trim();
+const COL={dhcp:'--dhcp',arp:'--arp',dns:'--dns',tcp:'--tcp',http:'--http',data:'--data'};
+const fmt=ms=>ms>=1000?(ms/1000).toFixed(3)+' s':ms.toFixed(2)+' ms';
+
+// ================= topology =================
+const NODES=[
+  {id:'laptop',ic:'💻',nm:'Your laptop',      sub:'68.80.2.101',     kind:'host',  mac:'A1:B2:C3:D4:E5:F6'},
+  {id:'gw',    ic:'📶',nm:'Campus gateway',    sub:'first-hop router',kind:'router',mac:'11:22:33:44:55:66'},
+  {id:'isp1',  ic:'🔀',nm:'ISP access router', sub:'Comcast edge',    kind:'router',mac:'21:22:23:24:25:26'},
+  {id:'isp2',  ic:'🛰️',nm:'ISP core router',   sub:'regional backbone',kind:'router',mac:'31:32:33:34:35:36'},
+  {id:'ixp',   ic:'🔗',nm:'IXP peering',       sub:'BGP hand-off',    kind:'router',mac:'41:42:43:44:45:46'},
+  {id:'gedge', ic:'🚪',nm:'Google edge router',sub:'AS15169',         kind:'router',mac:'51:52:53:54:55:56'},
+  {id:'gsw',   ic:'🎚️',nm:'Datacenter switch', sub:'ToR (layer 2)',   kind:'switch',mac:'61:62:63:64:65:66'},
+  {id:'server',ic:'🖥️',nm:'Web server',        sub:'64.233.169.105',  kind:'host',  mac:'71:72:73:74:75:76'},
+];
+const IDX=Object.fromEntries(NODES.map((n,i)=>[n.id,i]));
+const isRouter=i=>NODES[i].kind==='router';
+const A={clientIP:'68.80.2.101',routerIP:'68.80.2.1',dnsIP:'68.80.2.53',serverIP:'64.233.169.105',
+        clientMAC:'A1:B2:C3:D4:E5:F6',routerMAC:'11:22:33:44:55:66',bcast:'FF:FF:FF:FF:FF:FF'};
+
+function P(){
+  const R=+$('rate').value,dkm=+$('dist').value,dproc=+$('proc').value,objKB=+$('obj').value;
+  return {R,dkm,dproc,objKB,mode:$('mode').value,dhcp:$('dhcp').value,arp:$('arp').value,dns:$('dns').value,
+    dprop:dkm*1000/S*1000, RTT:2*(dkm*1000/S*1000), speed:+$('speed').value,
+    dtransReq:500*8/(R*1e6)*1000, dtransObj:objKB*1024*8/(R*1e6)*1000};
+}
+function routeHint(nodeIdx,dstIP){
+  const toServer=dstIP===A.serverIP;
+  const F={gw:['0.0.0.0/0','default → ISP uplink'],isp1:['0.0.0.0/0','default → regional core'],
+    isp2:['64.0.0.0/8','BGP → peer at IXP'],ixp:['64.233.160.0/19','BGP → AS15169 (Google)'],gedge:['64.233.169.0/24','→ datacenter fabric']};
+  const R={gedge:['0.0.0.0/0','default → IXP'],ixp:['68.80.0.0/13','BGP → Comcast'],isp2:['68.80.0.0/13','→ access network'],
+    isp1:['68.80.2.0/24','→ campus gateway'],gw:['68.80.2.101/32','local LAN → out WiFi']};
+  return (toServer?F:R)[NODES[nodeIdx].id]||['0.0.0.0/0','default route'];
+}
+
+/* ============================================================
+   TAB 1 — steps & layers  (fine-grained, includes DNS hierarchy)
+   ============================================================ */
+let STEPS=[], sCur=-1, sTotal=0;
+function stk(app,trans,net,link){return {app,trans,net,link};}
+function buildSteps(){
+  const p=P(); const s=[]; let t=0;
+  const localHop=p.dprop*0.02+p.dproc, wanHop=p.dprop+p.dproc;
+  const push=o=>{o.t0=t;s.push(o);t+=o.dur;};
+
+  if(p.dhcp==='yes'){
+    push({phase:'dhcp',dur:localHop,label:'DHCP Discover',title:'DHCP Discover (broadcast)',who:'Laptop → everyone on the LAN',
+      why:'The laptop just joined and has NO IP yet. It broadcasts to find a DHCP server.',pdu:'Frame',active:['app','trans','net','link'],
+      layers:stk('DHCP Discover — “I need an IP”','UDP src=68 → dst=67','IP src=0.0.0.0 → dst=255.255.255.255','Eth src='+A.clientMAC+' → dst='+A.bcast+' (broadcast)'),
+      note:'Everything is broadcast because the laptop has no IP and does not know the server yet.',metric:'DHCP'});
+    push({phase:'dhcp',dur:localHop,label:'DHCP Offer/ACK',title:'DHCP Offer + ACK',who:'Router (DHCP server) → laptop',
+      why:'The server leases an IP and tells the laptop the gateway IP and DNS server IP.',pdu:'Frame',active:['app','trans','net','link'],
+      layers:stk('DHCP ACK: your IP='+A.clientIP+', gateway='+A.routerIP+', DNS='+A.dnsIP,'UDP src=67 → dst=68','IP src='+A.routerIP+' → dst='+A.clientIP,'Eth src='+A.routerMAC+' → dst='+A.clientMAC),
+      note:'Now the laptop knows its own IP, the first-hop router, and the DNS server.',metric:'DHCP'});
+  }
+  if(p.arp==='no'){
+    push({phase:'arp',dur:localHop,label:'ARP Request',title:'ARP Request (broadcast)',who:'Laptop → everyone on the LAN',
+      why:'To send anything off-subnet the laptop needs the router’s MAC. It knows the router IP but not its MAC.',pdu:'Frame',active:['net','link'],
+      layers:stk('— (ARP has no app layer)','— (no UDP/TCP)','ARP: who has '+A.routerIP+'? tell '+A.clientIP,'Eth src='+A.clientMAC+' → dst='+A.bcast+' (broadcast)'),
+      note:'ARP query is broadcast because the sender does not yet know which MAC owns that IP.',metric:'ARP'});
+    push({phase:'arp',dur:localHop,label:'ARP Reply',title:'ARP Reply (unicast)',who:'Router → laptop only',
+      why:'The router answers with its MAC; unicast, because it learned the laptop’s MAC from the query.',pdu:'Frame',active:['net','link'],
+      layers:stk('—','—','ARP: '+A.routerIP+' is at '+A.routerMAC,'Eth src='+A.routerMAC+' → dst='+A.clientMAC+' (unicast)'),
+      note:'Laptop caches <'+A.routerIP+' → '+A.routerMAC+'> in its ARP table (~20 min TTL).',metric:'ARP'});
+  }
+  if(p.dns==='miss'){
+    push({phase:'dns',dur:wanHop,label:'DNS query',title:'DNS query — www.google.com?',who:'Laptop → local DNS resolver',
+      why:'Before HTTP, turn the hostname into an IP. DNS runs over UDP; the frame goes to the router’s MAC but the IP dst is the DNS server.',pdu:'Segment→Datagram→Frame',active:['app','trans','net','link'],
+      layers:stk('DNS query: A record for www.google.com','UDP src=49152 → dst=53','IP src='+A.clientIP+' → dst='+A.dnsIP,'Eth src='+A.clientMAC+' → dst='+A.routerMAC),
+      note:'Note the split: IP dst = DNS server (final), MAC dst = router (next hop).',metric:'DNS'});
+    ['root','TLD (.com)','authoritative (google)'].forEach(lvl=>{
+      push({phase:'dns',dur:p.dprop*0.5+p.dproc,label:'ask '+lvl,title:'Resolver asks the '+lvl+' server',who:'Local resolver → '+lvl+' name server',
+        why:'DNS is hierarchical: the resolver walks root → TLD → authoritative until it gets the answer.',pdu:'Segment→Datagram→Frame',active:['app','trans','net','link'],
+        layers:stk('DNS: where is www.google.com? ('+lvl+')','UDP dst=53','IP resolver → '+lvl+' server','Eth hop-by-hop'),
+        note:'Each level narrows the search; answers are cached with a TTL to skip this next time.',metric:'DNS'});
+    });
+    push({phase:'dns',dur:wanHop,label:'DNS reply (IP)',title:'DNS reply — here is the IP',who:'Resolver → laptop',
+      why:'The resolver returns the A record. Now the laptop knows the server’s IP.',pdu:'Segment→Datagram→Frame',active:['app','trans','net','link'],
+      layers:stk('DNS answer: www.google.com A '+A.serverIP,'UDP src=53 → dst=49152','IP src='+A.dnsIP+' → dst='+A.clientIP,'Eth src='+A.routerMAC+' → dst='+A.clientMAC),
+      note:'Laptop now has the server IP and can start TCP.',metric:'DNS'});
+  }
+  const hs=()=>{
+    push({phase:'tcp',dur:wanHop,label:'SYN',title:'TCP handshake — step 1: SYN',who:'Laptop → web server',
+      why:'HTTP needs a reliable connection. SYN carries the laptop’s initial sequence number.',pdu:'Segment→Datagram→Frame',active:['trans','net','link'],
+      layers:stk('(no app data — connection setup)','TCP SYN=1 seq=x src=49160 → dst=80','IP src='+A.clientIP+' → dst='+A.serverIP,'Eth src='+A.clientMAC+' → dst='+A.routerMAC+' (first hop)'),
+      note:'The frame goes to the router (next-hop MAC); routers rewrite the MAC at every hop.',metric:'TCP'});
+    push({phase:'tcp',dur:wanHop,label:'SYN-ACK',title:'TCP handshake — step 2: SYN-ACK',who:'Web server → laptop',
+      why:'The server agrees, acknowledges x+1 and sends its own initial seq y.',pdu:'Segment→Datagram→Frame',active:['trans','net','link'],
+      layers:stk('(no app data)','TCP SYN=1 ACK=1 seq=y ack=x+1 src=80 → dst=49160','IP src='+A.serverIP+' → dst='+A.clientIP,'Eth hop-by-hop back to laptop'),
+      note:'One RTT has now elapsed; two of three handshake messages are done.',metric:'TCP'});
+  };
+  if(p.mode==='persist'){
+    hs();
+    push({phase:'http',dur:wanHop+p.dtransReq,label:'ACK + GET',title:'HTTP GET (step 3: ACK piggybacks the GET)',who:'Browser → web server',
+      why:'The 3rd handshake ACK carries the first HTTP GET. The connection is ESTABLISHED and data flows.',pdu:'Message→Segment→Datagram→Frame',active:['app','trans','net','link'],
+      layers:stk('HTTP GET / HTTP/1.1  Host: www.google.com','TCP ACK=1 seq src=49160 → dst=80','IP src='+A.clientIP+' → dst='+A.serverIP,'Eth hop-by-hop'),
+      note:'Persistent HTTP pays the handshake once, then ~1 RTT per object.',metric:'HTTP req'});
+    push({phase:'data',dur:wanHop+p.dtransObj,label:'200 OK (page)',title:'HTTP Response — 200 OK',who:'Web server → browser',
+      why:'The server sends the page. Transmission time grows with page size ('+p.objKB+' KB) and shrinks with link rate.',pdu:'Message→Segment→Datagram→Frame',active:['app','trans','net','link'],
+      layers:stk('HTTP 200 OK  Content-Length: '+(p.objKB*1024)+'  <html>…</html>','TCP seq src=80 → dst=49160 ('+p.objKB+' KB)','IP src='+A.serverIP+' → dst='+A.clientIP,'Eth hop-by-hop to laptop'),
+      note:'Browser renders the page. d_trans(page)=L/R dominates when the page is large.',metric:'HTTP resp'});
+  } else {
+    hs();
+    push({phase:'http',dur:wanHop+p.dtransReq,label:'GET',title:'HTTP GET (new connection)',who:'Browser → web server',
+      why:'Non-persistent HTTP opens a fresh TCP connection per object — each object costs another handshake.',pdu:'Message→Segment→Datagram→Frame',active:['app','trans','net','link'],
+      layers:stk('HTTP GET / HTTP/1.1  Host: www.google.com','TCP ACK new connection → dst=80','IP src='+A.clientIP+' → dst='+A.serverIP,'Eth hop-by-hop'),
+      note:'With more objects, every object repeats SYN/SYN-ACK — the total climbs fast.',metric:'HTTP req'});
+    push({phase:'data',dur:wanHop+p.dtransObj,label:'200 OK (page)',title:'HTTP Response — 200 OK, then close',who:'Web server → browser',
+      why:'Server returns the object, then this TCP connection is closed (non-persistent).',pdu:'Message→Segment→Datagram→Frame',active:['app','trans','net','link'],
+      layers:stk('HTTP 200 OK  Content-Length: '+(p.objKB*1024),'TCP src=80 → dst… then FIN (close)','IP src='+A.serverIP+' → dst='+A.clientIP,'Eth hop-by-hop to laptop'),
+      note:'Connection closes after the object — the opposite of persistent HTTP.',metric:'HTTP resp'});
+  }
+  STEPS=s; sTotal=t; sCur=-1;
+  renderStepLog(); showStep(-1); renderMetrics(-1);
+  $('stepCount').textContent=s.length+' steps · '+fmt(t);
+}
+function renderStepLog(){
+  const ul=$('steplog'); ul.innerHTML='';
+  STEPS.forEach((st,i)=>{
+    const li=document.createElement('li'); li.style.borderLeftColor=getCSS(COL[st.phase]);
+    li.innerHTML=`<span class="stg" style="background:${getCSS(COL[st.phase])}">${st.phase}</span><b>${i+1}.</b> ${st.label}<span class="tm">${fmt(st.t0)}</span>`;
+    li.addEventListener('click',()=>{ sPause(); sGoto(i); });
+    ul.appendChild(li);
+  });
+}
+function renderMetrics(upto){
+  const agg={}; STEPS.forEach((st,i)=>{ if(i<=upto) agg[st.metric]=(agg[st.metric]||0)+st.dur; });
+  const order=['DHCP','ARP','DNS','TCP','HTTP req','HTTP resp']; const m=$('metrics'); m.innerHTML=''; let run=0;
+  order.forEach(k=>{ if(agg[k]!==undefined){ run+=agg[k]; const d=document.createElement('div'); d.className='metric'; d.innerHTML=`<span>${k}</span><b>${fmt(agg[k])}</b>`; m.appendChild(d);} });
+  $('s_total').textContent=fmt(run); $('s_prog').style.width=(STEPS.length?((upto+1)/STEPS.length*100):0)+'%';
+}
+function showStep(i){
+  [...$('steplog').children].forEach((li,k)=>{ li.classList.toggle('active',k===i); li.classList.toggle('done',k<i); });
+  const ex=$('explain'), stackEl=$('stack');
+  if(i<0){ ex.innerHTML='<div class="who">Ready. Press ▶ Play or ⟶.</div><div class="why">Each step explains who acts, why, and shows the encapsulation stack.</div>';
+    stackEl.innerHTML=''; $('layernote').textContent=''; $('encaphdr').textContent='Protocol stack (encapsulation):'; return; }
+  const st=STEPS[i];
+  ex.innerHTML=`<div class="who">Step ${i+1}/${STEPS.length}: ${st.title}</div><div style="margin-top:3px;">${st.who}</div><div class="why">${st.why}</div>`;
+  $('encaphdr').innerHTML='Protocol stack (encapsulation) <span class="pdu">'+st.pdu+'</span>';
+  const rows=[['app','Application',st.layers.app],['trans','Transport',st.layers.trans],['net','Network',st.layers.net],['link','Link',st.layers.link]];
+  stackEl.innerHTML='';
+  rows.forEach(([cls,name,fields])=>{ const on=st.active.includes(cls); const d=document.createElement('div');
+    d.className='layer '+cls+(on?'':' dim'); d.innerHTML=`<div class="lname">${name}${on?'':' · not used here'}</div><div class="lfields">${fields}</div>`; stackEl.appendChild(d); });
+  $('layernote').textContent=st.note||''; renderMetrics(i);
+}
+let sPlaying=false;
+function sGoto(i){ sCur=Math.max(-1,Math.min(STEPS.length-1,i)); showStep(sCur); sBtns(); }
+function sStep(){ if(sCur>=STEPS.length-1){sPlaying=false;sBtns();return;} sGoto(sCur+1); if(sPlaying) setTimeout(sStep, 950/P().speed); }
+function sPlay(){ if(sCur>=STEPS.length-1) sGoto(-1); sPlaying=true; $('s_play').textContent='⏸ Pause'; sBtns(); sStep(); }
+function sPause(){ sPlaying=false; $('s_play').textContent='▶ Play'; sBtns(); }
+function sBtns(){ $('s_prev').disabled=sCur<=0; $('s_next').disabled=sCur>=STEPS.length-1; $('s_play').textContent=sPlaying?'⏸ Pause':'▶ Play'; }
+$('s_play').addEventListener('click',()=>{ sPlaying?sPause():sPlay(); });
+$('s_next').addEventListener('click',()=>{ sPause(); sGoto(sCur+1); });
+$('s_prev').addEventListener('click',()=>{ sPause(); sGoto(sCur-1); });
+
+/* ============================================================
+   TAB 2 — hop-by-hop journey
+   ============================================================ */
+const svg=$('svg'), stage=$('stage');
+let MSGS=[], curMsg=-1, hopIdx=-1, HOPS=[];
+function buildMsgs(){
+  const p=P(); const m=[];
+  const full=[0,1,2,3,4,5,6,7], fullR=[7,6,5,4,3,2,1,0], toDNS=[0,1,2], toDNSr=[2,1,0], local=[0,1], localR=[1,0];
+  if(p.dhcp==='yes'){
+    m.push({phase:'dhcp',label:'DHCP Discover',title:'DHCP Discover (broadcast)',path:local,dstIP:'255.255.255.255',ipSrc:'0.0.0.0',l4:'UDP 68→67',app:'“I need an IP”',ttl:'link-local',
+      purpose:'Laptop has no IP yet — broadcast on the local LAN to find a DHCP server.'});
+    m.push({phase:'dhcp',label:'DHCP Offer/ACK',title:'DHCP Offer + ACK',path:localR,dstIP:A.clientIP,ipSrc:A.routerIP,l4:'UDP 67→68',app:'your IP + gateway + DNS',ttl:'link-local',
+      purpose:'Router leases the laptop an IP and tells it the gateway and DNS addresses.'});
+  }
+  if(p.arp==='no'){
+    m.push({phase:'arp',label:'ARP Request',title:'ARP Request (broadcast)',path:local,dstIP:'—',ipSrc:'—',l4:'(no transport)',app:'who has '+A.routerIP+'?',ttl:'—',noIP:true,
+      purpose:'Needs the router’s MAC to send anything off-subnet. ARP query is broadcast.'});
+    m.push({phase:'arp',label:'ARP Reply',title:'ARP Reply (unicast)',path:localR,dstIP:'—',ipSrc:'—',l4:'(no transport)',app:A.routerIP+' is at '+A.routerMAC,ttl:'—',noIP:true,
+      purpose:'Router replies with its MAC — unicast, because it learned the laptop’s MAC.'});
+  }
+  if(p.dns==='miss'){
+    m.push({phase:'dns',label:'DNS query',title:'DNS query → resolver',path:toDNS,dstIP:A.dnsIP,ipSrc:A.clientIP,l4:'UDP 49152→53',app:'A? www.google.com',ttl:64,
+      purpose:'Turn hostname into IP. Travels laptop → gateway → ISP resolver; TTL drops at the gateway.'});
+    m.push({phase:'dns',label:'DNS reply',title:'DNS reply ← resolver',path:toDNSr,dstIP:A.clientIP,ipSrc:A.dnsIP,l4:'UDP 53→49152',app:'www.google.com A '+A.serverIP,ttl:64,
+      purpose:'Resolver returns the server’s IP. Now the laptop can open TCP.'});
+  }
+  m.push({phase:'tcp',label:'TCP SYN',title:'TCP SYN → server (full path)',path:full,dstIP:A.serverIP,ipSrc:A.clientIP,l4:'TCP SYN seq=x →80',app:'(no app data — setup)',ttl:64,star:true,
+    purpose:'SYN crosses EVERY router to the server. Watch MAC change per hop, TTL fall, IP stay fixed.'});
+  m.push({phase:'tcp',label:'SYN-ACK',title:'TCP SYN-ACK ← server',path:fullR,dstIP:A.clientIP,ipSrc:A.serverIP,l4:'TCP SYN,ACK seq=y ack=x+1',app:'(no app data)',ttl:64,star:true,
+    purpose:'Server agrees; the reply retraces the path — routers rewrite MACs on the way back too.'});
+  m.push({phase:'http',label:'HTTP GET',title:'HTTP GET → server (full path)',path:full,dstIP:A.serverIP,ipSrc:A.clientIP,l4:'TCP ACK+data →80',app:'GET / HTTP/1.1  Host: www.google.com',ttl:64,star:true,
+    purpose:'The request rides the same path; the 3rd handshake ACK carries the GET.'});
+  m.push({phase:'data',label:'200 OK (page)',title:'HTTP 200 OK ← server',path:fullR,dstIP:A.clientIP,ipSrc:A.serverIP,l4:'TCP data ('+p.objKB+' KB)',app:'200 OK <html>…</html>',ttl:64,star:true,
+    purpose:'The page travels back hop by hop; transmission time scales with page size / link rate.'});
+  MSGS=m;
+  renderMsgList();
+  // default to first STAR (full-path) message so "Watch hops" shows all hops
+  let def=m.findIndex(x=>x.star); if(def<0) def=0;
+  selectMsg(def);
+}
+function computeHops(msg){
+  const p=P(), path=msg.path, hops=[]; let ttl=(typeof msg.ttl==='number')?msg.ttl:null;
+  for(let k=0;k<path.length-1;k++) hops.push({from:path[k],to:path[k+1],fromMac:NODES[path[k]].mac,toMac:NODES[path[k+1]].mac});
+  const nonLocal=hops.filter(h=>Math.max(h.from,h.to)>1).length||1; let clock=0;
+  hops.forEach(h=>{ const isLocal=Math.max(h.from,h.to)<=1; const prop=isLocal?(p.dprop*0.01+0.05):(p.dprop/nonLocal);
+    h.tStart=clock; h.prop=prop;
+    if(ttl!==null){ if(isRouter(h.from)) ttl-=1; h.ttl=ttl; } else h.ttl=msg.ttl;
+    h.arriveNode=h.to; clock+=prop+(isRouter(h.from)?p.dproc:0); h.tEnd=clock; h.detail=buildDetail(msg,h,h.to);
+  });
+  return hops;
+}
+function nextAfter(msg,idx){ const pos=msg.path.indexOf(idx); return (pos>=0&&pos<msg.path.length-1)?msg.path[pos+1]:-1; }
+function buildRTable(idx,dstIP){ const [pfx,via]=routeHint(idx,dstIP);
+  const rows=[['10.0.0.0/8','→ internal'],[pfx,'→ '+via],['0.0.0.0/0','→ default']];
+  return 'dst prefix           next hop\n'+rows.map(([a,b])=>{const hit=a===pfx;const line=a.padEnd(20)+b;return hit?'▶ '+line+'   ✓ match':'  '+line;}).join('\n');
+}
+function buildDetail(msg,hop,arrive){
+  const N=NODES[arrive], thisMac=NODES[arrive].mac, dstIP=msg.dstIP;
+  const nextIdx=nextAfter(msg,arrive), nextMac=nextIdx>=0?NODES[nextIdx].mac:null;
+  const ttlIn=hop.ttl, ttlOut=(typeof ttlIn==='number')?ttlIn-1:ttlIn;
+  let role,steps,rtable=null,note;
+  if(N.kind==='router'){ const [pfx,via]=routeHint(arrive,dstIP); role={txt:'Layer-3 router',col:'#7b2d8e'};
+    steps=[['link','1. Receive frame, verify Ethernet CRC. dst MAC = '+thisMac+' matches this input port → accept.'],
+      ['net','2. Strip the frame; read IP header. dst IP = '+dstIP+' (still unchanged).'],
+      ['net','3. Longest-prefix match in routing table → '+pfx+' ('+via+'). Pick output interface.'],
+      ['net','4. Decrement TTL: '+ttlIn+' → '+ttlOut+' (drop the frame if it hits 0).'],
+      ['link','5. Build a NEW frame: src MAC '+thisMac+' → dst MAC '+(nextMac||'next hop')+', recompute CRC, forward.']];
+    rtable=buildRTable(arrive,dstIP); note='IP src/dst did not change — only the MACs were rewritten for the next hop, and TTL dropped by 1.';
+  } else if(N.kind==='switch'){ role={txt:'Layer-2 switch',col:'#0d7d7d'};
+    steps=[['link','1. Receive frame, verify CRC.'],['link','2. Look up dst MAC '+(nextMac||NODES[IDX.server].mac)+' in the switch table (self-learned).'],
+      ['link','3. Forward on just that one port. No IP lookup, TTL stays '+ttlIn+' (switches are layer-2).']];
+    note='A switch forwards by MAC and does NOT touch the IP header or TTL — that is a router’s job.';
+  } else { role={txt:'Destination host',col:'#334155'};
+    if(msg.noIP) steps=[['link','1. Frame arrives, CRC ok, dst MAC matches this NIC.'],['link','2. It is an ARP packet → answer / cache the mapping.']];
+    else steps=[['link','1. Frame arrives at NIC. dst MAC = '+thisMac+' matches → accept, verify CRC.'],
+      ['net','2. IP dst = '+dstIP+' = me. TTL arrived = '+ttlIn+' (survived the trip). Strip IP header.'],
+      ['trans','3. '+(msg.l4||'transport')+' → demultiplex to the right socket / port.'],
+      ['app','4. Deliver the data to the application: '+(msg.app||'')]];
+    note='End of the journey. The MAC changed on every hop; the IP stayed constant the whole way.';
+  }
+  return {arrive,role,steps,rtable,note,ttl:hop.ttl};
+}
+// topology drawing
+function place(){
+  [...stage.querySelectorAll('.node')].forEach(e=>e.remove());
+  const n=NODES.length, y=stage.clientHeight*0.42;
+  NODES.forEach((nd,i)=>{ const x=6+i*(88/(n-1)); const el=document.createElement('div'); el.className='node '+nd.kind; el.id='nd_'+i;
+    el.style.left=x+'%'; el.style.top=y+'px';
+    el.innerHTML=`<div class="ring" style="display:none"></div><span class="ic">${nd.ic}</span><div class="nm">${nd.nm}</div><div class="sub">${nd.sub}</div><div class="kind">${nd.kind}</div>`;
+    stage.appendChild(el); });
+  drawLinks();
+}
+function nodeX(i){ const n=NODES.length; return stage.clientWidth*(6+i*(88/(n-1)))/100; }
+function nodeY(){ return stage.clientHeight*0.42; }
+function drawLinks(active){ svg.innerHTML='';
+  for(let i=0;i<NODES.length-1;i++){ const l=document.createElementNS('http://www.w3.org/2000/svg','line');
+    l.setAttribute('x1',nodeX(i));l.setAttribute('x2',nodeX(i+1));l.setAttribute('y1',nodeY());l.setAttribute('y2',nodeY());
+    const on=active&&active.includes(i)&&active.includes(i+1)&&Math.abs(active.indexOf(i)-active.indexOf(i+1))===1;
+    l.setAttribute('stroke',on?'#9fb4d8':'#dbe2ee');l.setAttribute('stroke-width',on?'3':'2');l.setAttribute('stroke-dasharray',on?'':'4 4');svg.appendChild(l);} }
+function renderMsgList(){ const ul=$('msglist'); ul.innerHTML='';
+  MSGS.forEach((mm,i)=>{ const li=document.createElement('li'); li.style.borderLeftColor=getCSS(COL[mm.phase]);
+    li.innerHTML=`<span class="stg" style="background:${getCSS(COL[mm.phase])}">${mm.phase}</span><b>${i+1}.</b> ${mm.label}${mm.star?' ⭐':''}`;
+    li.addEventListener('click',()=>{ hPause(); selectMsg(i); }); ul.appendChild(li); }); }
+function selectMsg(i){
+  curMsg=i; const msg=MSGS[i];
+  [...$('msglist').children].forEach((li,k)=>li.classList.toggle('active',k===i));
+  HOPS=computeHops(msg); hopIdx=-1;
+  $('tripName').textContent=msg.label;
+  drawLinks(msg.path);
+  NODES.forEach((_,k)=>{ const el=$('nd_'+k); if(el){el.classList.remove('here'); const r=el.querySelector('.ring'); if(r)r.style.display='none';} });
+  removePkt(); updateStrip(msg,null); renderHopLog(); showOverview(msg);
+  $('hopLbl').textContent='hop 0 / '+HOPS.length; $('clock').textContent='t = 0.0 ms';
+  const b=$('localBanner');
+  if(HOPS.length<=1){ b.className='banner on'; b.innerHTML='ℹ️ <b>'+msg.label+'</b> stays on the <b>local link</b> (laptop ↔ gateway) — only '+HOPS.length+' hop. Pick a <b>⭐ message</b> (TCP SYN, HTTP GET…) to watch the full multi-router journey.'; }
+  else b.className='banner';
+  hBtns();
+}
+function updateStrip(msg,hop){
+  const ipL=$('ipLine'),macL=$('macLine'),ttlB=$('ttlBig'),ttlP=$('ttlPin');
+  if(msg.noIP){ ipL.parentElement.style.opacity=.4; ipL.textContent='(ARP has no IP layer)'; }
+  else { ipL.parentElement.style.opacity=1; ipL.textContent='src '+msg.ipSrc+'  →  dst '+msg.dstIP; }
+  if(!hop){ macL.textContent='(at source) '+NODES[msg.path[0]].mac; ttlB.textContent=msg.ttl; ttlP.textContent=(typeof msg.ttl==='number')?'set by sender':'link-local'; }
+  else { macL.textContent='src '+hop.fromMac+'  →  dst '+hop.toMac; macL.classList.remove('chg'); void macL.offsetWidth; macL.classList.add('chg');
+    ttlB.textContent=hop.ttl; ttlP.textContent=(typeof hop.ttl==='number')?('on the wire (hop '+(HOPS.indexOf(hop)+1)+')'):'—'; }
+}
+function renderHopLog(){ const ul=$('hoplog'); ul.innerHTML='';
+  if(!HOPS.length){ ul.innerHTML='<li class="act">No hops.</li>'; return; }
+  HOPS.forEach((h,k)=>{ const li=document.createElement('li'); li.id='hop_'+k; const arrK=NODES[h.arriveNode].kind;
+    const ttlTxt=(typeof h.ttl==='number')?('TTL '+h.ttl):h.ttl;
+    li.innerHTML=`<span class="ttl">${ttlTxt}</span><span class="h">Hop ${k+1}: ${NODES[h.from].nm} → ${NODES[h.arriveNode].nm}</span>
+      <div class="mac">frame: ${h.fromMac} → ${h.toMac}</div>
+      <div class="act">${arrK==='router'?'router: CRC ✓ · route lookup · TTL−− · rewrite MAC':arrK==='switch'?'switch: forward by MAC (no TTL change)':'destination: deliver up the stack'}</div>`;
+    li.addEventListener('click',()=>{ hPause(); gotoHop(k); }); ul.appendChild(li); }); }
+function showOverview(msg){ const d=$('detail');
+  const rows=[['app','Application',msg.app||'—'],['trans','Transport',msg.l4||'—'],['net','Network',msg.noIP?'(none — ARP)':('IP src '+msg.ipSrc+' → dst '+msg.dstIP)],['link','Link','Ethernet, MAC rewritten each hop']];
+  d.innerHTML=`<div class="title">${msg.title}</div><span class="role" style="background:${getCSS(COL[msg.phase])}">${msg.phase.toUpperCase()}</span>
+    <div style="font-size:12px;margin:4px 0 8px;color:var(--muted)">${msg.purpose}</div>
+    <ul class="steps4">${rows.map(([c,n,t])=>`<li><span class="n">${c==='app'?'A':c==='trans'?'T':c==='net'?'N':'L'}</span><span>${n}: <code style="font-size:11px">${t}</code></span><span class="lyr ${c}">${n[0]}</span></li>`).join('')}</ul>
+    <div class="note">Press ▶ Watch hops (or hop ▶) to send it across the ${HOPS.length} link${HOPS.length===1?'':'s'}.</div>`;
+}
+function showHopDetail(k){ const h=HOPS[k], det=h.detail, N=NODES[det.arrive], d=$('detail');
+  const s=det.steps.map(([lyr,txt])=>`<li><span class="n">${{link:'L',net:'N',trans:'T',app:'A'}[lyr]}</span><span>${txt}</span><span class="lyr ${lyr}">${lyr.toUpperCase()}</span></li>`).join('');
+  d.innerHTML=`<div class="title">Hop ${k+1}/${HOPS.length}: arriving at ${N.nm} ${N.ic}</div><span class="role" style="background:${det.role.col}">${det.role.txt}</span>
+    <ul class="steps4">${s}</ul>${det.rtable?`<div style="font-size:10.5px;color:var(--muted);margin-top:8px">Routing table (longest-prefix match):</div><div class="rtable">${det.rtable.replace(/▶ (.*?)✓ match/g,'<span class="hit">▶ $1✓ match</span>')}</div>`:''}<div class="note">${det.note}</div>`;
+}
+let pkt=null,hPlaying=false;
+function removePkt(){ if(pkt){pkt.remove();pkt=null;} }
+function makePkt(msg){ removePkt(); pkt=document.createElement('div'); pkt.className='pkt'; pkt.style.background=getCSS(COL[msg.phase]); pkt.textContent=msg.label; stage.appendChild(pkt); }
+function setHere(idx){ NODES.forEach((_,k)=>{ const el=$('nd_'+k); if(!el)return; el.classList.toggle('here',k===idx); const r=el.querySelector('.ring'); if(r)r.style.display=(k===idx)?'block':'none'; }); }
+function gotoHop(k){ const msg=MSGS[curMsg]; if(!HOPS.length)return; hopIdx=Math.max(0,Math.min(HOPS.length-1,k)); const h=HOPS[hopIdx];
+  makePkt(msg); pkt.style.left=nodeX(h.to)+'px'; pkt.style.top=(nodeY()-30)+'px';
+  setHere(h.arriveNode); updateStrip(msg,h); showHopDetail(hopIdx);
+  [...$('hoplog').children].forEach((li,i)=>li.classList.toggle('cur',i===hopIdx));
+  document.getElementById('hop_'+hopIdx)?.scrollIntoView({block:'nearest'});
+  $('hopLbl').textContent='hop '+(hopIdx+1)+' / '+HOPS.length; $('clock').textContent='t = '+fmt(h.tEnd); hBtns(); }
+function animateHop(k,done){ const msg=MSGS[curMsg], h=HOPS[k]; makePkt(msg); setHere(h.from);
+  const x0=nodeX(h.from),x1=nodeX(h.to),y=nodeY()-30, dur=Math.max(420,Math.min(1600,h.prop*10))/P().speed, t0=performance.now();
+  (function mv(){ const t=Math.min(1,(performance.now()-t0)/dur); pkt.style.left=(x0+(x1-x0)*t)+'px'; pkt.style.top=y+'px';
+    $('clock').textContent='t = '+fmt(h.tStart+(h.tEnd-h.tStart)*t);
+    if(t<1) requestAnimationFrame(mv);
+    else { hopIdx=k; setHere(h.arriveNode); updateStrip(msg,h); showHopDetail(k);
+      [...$('hoplog').children].forEach((li,i)=>li.classList.toggle('cur',i===k));
+      document.getElementById('hop_'+k)?.scrollIntoView({block:'nearest'});
+      $('hopLbl').textContent='hop '+(k+1)+' / '+HOPS.length; hBtns(); setTimeout(()=>done&&done(),260/P().speed); } })();
+}
+function hPlay(){ if(!HOPS.length)return; hPlaying=true; $('h_play').textContent='⏸ Pause'; hBtns();
+  let k=(hopIdx>=HOPS.length-1)?0:hopIdx+1;
+  (function step(){ if(!hPlaying)return; if(k>=HOPS.length){hPlaying=false;$('h_play').textContent='▶ Watch hops';hBtns();return;}
+    animateHop(k,()=>{ k++; if(hPlaying)step(); else {$('h_play').textContent='▶ Watch hops';hBtns();} }); })(); }
+function hPause(){ hPlaying=false; $('h_play').textContent='▶ Watch hops'; hBtns(); }
+function hBtns(){ $('h_prev').disabled=hopIdx<=0; $('h_next').disabled=hopIdx>=HOPS.length-1; $('h_play').textContent=hPlaying?'⏸ Pause':'▶ Watch hops'; }
+$('h_play').addEventListener('click',()=>{ hPlaying?hPause():hPlay(); });
+$('h_next').addEventListener('click',()=>{ hPause(); animateHop(Math.min(HOPS.length-1,hopIdx+1)); });
+$('h_prev').addEventListener('click',()=>{ hPause(); gotoHop(hopIdx-1); });
+$('h_reset').addEventListener('click',()=>{ hPause(); selectMsg(curMsg<0?0:curMsg); });
+
+/* ============================================================
+   TAB 3 — RTT & timing (time-sequence ladder)
+   ============================================================ */
+const rttsvg=$('rttsvg'), RNS='http://www.w3.org/2000/svg';
+function rEl(tag,attrs){ const e=document.createElementNS(RNS,tag); for(const k in attrs) e.setAttribute(k,attrs[k]); return e; }
+
+// arrows between lanes: 0=You(laptop), 1=DNS resolver, 2=Web server
+function buildRttArrows(){
+  const p=P(); const arr=[]; let t=0;
+  const owDNS=p.dprop*0.55+p.dproc;   // laptop<->resolver (resolver at ISP, closer than server)
+  const ow=p.dprop+p.dproc;           // laptop<->server one-way
+  const push=(from,to,dur,label,phase)=>{ arr.push({from,to,t0:t,dur,label,phase}); t+=dur; };
+  if(p.dns==='miss'){
+    push(0,1,owDNS,'DNS query','dns');
+    push(1,0,owDNS,'DNS reply (IP)','dns');
+  }
+  push(0,2,ow,'SYN','tcp');
+  push(2,0,ow,'SYN-ACK','tcp');
+  if(p.mode==='persist'){
+    push(0,2,ow,'ACK + GET','http');
+    push(2,0,ow+p.dtransObj,'200 OK (page)','data');
+  } else {
+    push(0,2,ow,'GET','http');
+    push(2,0,ow+p.dtransObj,'200 OK (page)','data');
+  }
+  return {arr,total:t,ow,owDNS,p};
+}
+function rttGroups(arr){
+  const g=[];
+  const dns=arr.filter(a=>a.phase==='dns'); if(dns.length) g.push({name:'DNS lookup',phase:'dns',rtts:1,a0:dns[0],a1:dns[dns.length-1]});
+  const tcp=arr.filter(a=>a.phase==='tcp'); if(tcp.length) g.push({name:'TCP handshake',phase:'tcp',rtts:1,a0:tcp[0],a1:tcp[tcp.length-1]});
+  const req=arr.find(a=>a.phase==='http'), resp=arr.find(a=>a.phase==='data');
+  if(req&&resp) g.push({name:'HTTP request/response',phase:'http',rtts:1,a0:req,a1:resp});
+  return g;
+}
+function drawRtt(){
+  const {arr,total,ow,owDNS,p}=buildRttArrows();
+  const W=rttsvg.clientWidth||820, H=rttsvg.clientHeight||560;
+  rttsvg.innerHTML='';
+  const padTop=56, padBot=26, padL=66, padR=160;
+  const laneX=[padL+20, (padL+ (W-padR))/2, W-padR];
+  const laneName=['You (laptop)','DNS resolver','Web server'], laneIc=['💻','📇','🖥️'];
+  const y=t=> padTop + (H-padTop-padBot)*(total? t/total : 0);
+  // arrowhead defs
+  const defs=rEl('defs',{});
+  ['dns','tcp','http','data'].forEach(ph=>{ const m=rEl('marker',{id:'ah_'+ph,markerWidth:9,markerHeight:9,refX:6.5,refY:3,orient:'auto'});
+    m.appendChild(rEl('path',{d:'M0,0 L6.5,3 L0,6 Z',fill:getCSS(COL[ph])})); defs.appendChild(m); });
+  rttsvg.appendChild(defs);
+  // lifelines
+  laneX.forEach((x,i)=>{
+    rttsvg.appendChild(rEl('line',{x1:x,x2:x,y1:padTop-6,y2:H-padBot,stroke:'#c5cfe2','stroke-width':2}));
+    const ic=rEl('text',{x,y:padTop-30,'text-anchor':'middle','font-size':17}); ic.textContent=laneIc[i]; rttsvg.appendChild(ic);
+    const lbl=rEl('text',{x,y:padTop-14,'text-anchor':'middle','font-size':12,'font-weight':700,fill:'#0b3d91'}); lbl.textContent=laneName[i]; rttsvg.appendChild(lbl);
+  });
+  // time ticks
+  for(let i=0;i<=5;i++){ const tt=total*i/5, yy=y(tt);
+    rttsvg.appendChild(rEl('line',{x1:padL-8,x2:W-padR+8,y1:yy,y2:yy,stroke:'#e8edf6','stroke-width':1}));
+    const tx=rEl('text',{x:padL-12,y:yy+3,'text-anchor':'end','font-size':9.5,fill:'#8894ab'}); tx.textContent=fmt(tt); rttsvg.appendChild(tx);
+  }
+  // arrows
+  arr.forEach(a=>{
+    const x1=laneX[a.from], x2=laneX[a.to], y1=y(a.t0), y2=y(a.t0+a.dur), col=getCSS(COL[a.phase]);
+    rttsvg.appendChild(rEl('line',{x1,y1,x2,y2,stroke:col,'stroke-width':2.4,'marker-end':'url(#ah_'+a.phase+')'}));
+    const mx=(x1+x2)/2, my=(y1+y2)/2;
+    rttsvg.appendChild(rEl('rect',{x:mx-a.label.length*3.05,y:my-13,width:a.label.length*6.1,height:13,rx:6,fill:'#fff',opacity:.85}));
+    const tl=rEl('text',{x:mx,y:my-3,'text-anchor':'middle','font-size':10,'font-weight':700,fill:col}); tl.textContent=a.label; rttsvg.appendChild(tl);
+  });
+  // round-trip brackets
+  const groups=rttGroups(arr), bx=W-padR+26;
+  groups.forEach(g=>{ const yTop=y(g.a0.t0), yBot=y(g.a1.t0+g.a1.dur), col=getCSS(COL[g.phase]);
+    rttsvg.appendChild(rEl('path',{d:`M${bx-6},${yTop} L${bx},${yTop} L${bx},${yBot} L${bx-6},${yBot}`,fill:'none',stroke:col,'stroke-width':2}));
+    const t1=rEl('text',{x:bx+7,y:(yTop+yBot)/2-2,'font-size':10.5,'font-weight':700,fill:col}); t1.textContent=g.name; rttsvg.appendChild(t1);
+    const t2=rEl('text',{x:bx+7,y:(yTop+yBot)/2+11,'font-size':9.5,fill:'#5a6577'}); t2.textContent='≈ 1 RTT'; rttsvg.appendChild(t2);
+  });
+  renderRttBudget(groups,total,p);
+}
+function renderRttBudget(groups,total,p){
+  const box=$('rttBudget'); box.innerHTML=''; let n=0;
+  groups.forEach(g=>{ n+=g.rtts; const dur=(g.a1.t0+g.a1.dur)-g.a0.t0, col=getCSS(COL[g.phase]);
+    const d=document.createElement('div'); d.className='rttmetric';
+    d.innerHTML=`<span class="lft"><span class="tag" style="background:${col}"></span>${g.name}</span><span><span class="rtts" style="background:${col}">${g.rtts} RTT</span> &nbsp;<b>${fmt(dur)}</b></span>`;
+    box.appendChild(d); });
+  $('rttTotal').textContent=fmt(total);
+  $('rttHeadRtt').textContent='RTT = '+fmt(p.RTT);
+  $('rttCount').textContent='This page load ≈ '+n+' round trips'+(p.dns==='hit'?' (DNS cached)':'')+' + page transmit.';
+  $('rttFormula').textContent =
+`RTT = 2 × d_prop = 2 × (d / s)
+    = 2 × (${p.dkm.toLocaleString()} km / 2×10⁸ m/s)
+    = 2 × ${p.dprop.toFixed(2)} ms  =  ${p.RTT.toFixed(2)} ms
+
+page-load ≈ (#RTTs) × RTT + transmit(page)
+transmit(page) = L/R
+             = ${p.objKB} KB / ${p.R} Mbps = ${p.dtransObj.toFixed(2)} ms`;
+  const per='Persistent HTTP: pay DNS + handshake once, then ~1 RTT per object.';
+  const non='Non-persistent HTTP: every extra object repeats the TCP handshake (+1 RTT each).';
+  $('rttInsight').innerHTML='💡 '+(p.mode==='persist'?per:non)+
+    ' RTT dominates over long distances (try 🛰️ Satellite: RTT ≈ 700 ms), while <i>transmit(page)</i> dominates for a large page or slow link.';
+}
+
+/* ================= tabs, params, init ================= */
+function showTab(n){
+  [1,2,3].forEach(k=>{ $('tabBtn'+k).classList.toggle('on',n===k); $('panel'+k).classList.toggle('on',n===k); });
+  if(n===2){ place(); if(curMsg>=0){ drawLinks(MSGS[curMsg].path); } }
+  if(n===3){ drawRtt(); }
+}
+$('tabBtn1').addEventListener('click',()=>showTab(1));
+$('tabBtn2').addEventListener('click',()=>showTab(2));
+$('tabBtn3').addEventListener('click',()=>showTab(3));
+
+function rebuild(){ buildSteps(); buildMsgs(); if($('panel3').classList.contains('on')) drawRtt(); }
+['rate','dist','proc','obj','mode','dhcp','arp','dns'].forEach(id=>$(id).addEventListener('input',()=>{ refresh(); sPause(); hPause(); rebuild(); }));
+$('speed').addEventListener('input',()=>{ $('spV').textContent=(+$('speed').value)+'×'; });
+const PRE={fresh:{rate:50,dist:3000,proc:1,obj:100,mode:'persist',dhcp:'yes',arp:'no',dns:'miss'},
+           fiber:{rate:500,dist:1500,proc:1,obj:200,mode:'persist',dhcp:'no',arp:'yes',dns:'miss'},
+           sat:{rate:25,dist:70000,proc:3,obj:150,mode:'nonpersist',dhcp:'no',arp:'yes',dns:'miss'}};
+document.querySelectorAll('.preset').forEach(b=>b.addEventListener('click',()=>{const q=PRE[b.dataset.p];for(const k in q)$(k).value=q[k];refresh();sPause();hPause();rebuild();}));
+function refresh(){ const p=P();
+  $('rateV').textContent=p.R>=1000?(p.R/1000)+' Gbps':p.R+' Mbps';
+  $('distV').textContent=p.dkm.toLocaleString()+' km (RTT '+p.RTT.toFixed(1)+' ms)';
+  $('procV').textContent=p.dproc+' ms';
+}
+window.addEventListener('resize',()=>{
+  if($('panel2').classList.contains('on')){ place(); if(curMsg>=0){ drawLinks(MSGS[curMsg].path); if(hopIdx>=0) gotoHop(hopIdx);} }
+  if($('panel3').classList.contains('on')) drawRtt();
+});
+function init(){ refresh(); place(); rebuild();
+  const u=new URLSearchParams(location.search);
+  if(u.get('tab')==='2') showTab(2);
+  if(u.get('tab')==='3') showTab(3);
+  if(u.has('msg')){ showTab(2); selectMsg(Math.max(0,Math.min(MSGS.length-1,(+u.get('msg')||1)-1))); }
+  if(u.has('hop')){ showTab(2); gotoHop((+u.get('hop')||1)-1); }
+  if(u.has('step')){ sGoto((+u.get('step')||1)-1); }
+}
+window.addEventListener('load',init); init();
+</script>
+</body>
+</html>
