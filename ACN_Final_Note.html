@@ -740,7 +740,7 @@ function mountSim(host){
       s.addEventListener('change',()=>onChange(s.value));f.appendChild(s);ctrls.appendChild(f);return s;
     },
     readout(){ const r=document.createElement('div');r.className='sim-read';body.appendChild(r);return r; },
-    el(html){ const d=document.createElement('div'); d.innerHTML=html; body.appendChild(d.firstElementChild||d); return d.firstElementChild||d; },
+    el(html){ const d=document.createElement('div'); d.innerHTML=html; const c=d.firstElementChild||d; body.appendChild(c); return c; },
     legend(items){ const l=document.createElement('div');l.className='legend';
       l.innerHTML=items.map(([c,t])=>`<span><i style="background:${c}"></i>${t}</span>`).join('');body.appendChild(l);return l; },
     reset(){ state.t0=performance.now(); state.t=0; },
@@ -1465,7 +1465,7 @@ defSim('switch',(H)=>{
 /* ============================================================
    mount everything
    ============================================================ */
-document.querySelectorAll('[data-sim]').forEach(mountSim);
+document.querySelectorAll('[data-sim]').forEach(h=>{ try{ mountSim(h); }catch(e){ console.error('mountSim failed for',h.dataset.sim,e); } });
 /* ensure every canvas sim has a valid width + first frame, even if never scrolled into view */
 running.forEach(s=>{ if(s.canvas && s._resize){ s._resize(); s.t = POSTER[s.id]||1.2; try{ s.draw&&s.draw(); }catch(e){} } });
 
